@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
@@ -110,7 +110,7 @@ client.on('interactionCreate', async (interaction) => {
         const parts = customId.split('_');
         const pollId = parseInt(parts[2]);
         const pollData = polls.get(pollId);
-        if (!pollData) return interaction.reply({ content: 'このアンケートはすでに削除されました。', ephemeral: true });
+        if (!pollData) return interaction.reply({ content: 'このアンケートはすでに削除されました。', flags: MessageFlags.Ephemeral });
 
         if (parts[1] === 'close') {
             pollData.closed = true;
@@ -119,7 +119,7 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (pollData.closed) {
-            return interaction.reply({ content: 'このアンケートはすでに終了しています。', ephemeral: true });
+            return interaction.reply({ content: 'このアンケートはすでに終了しています。', flags: MessageFlags.Ephemeral });
         }
 
         const optionIndex = parseInt(parts[3]);
@@ -140,24 +140,24 @@ client.on('interactionCreate', async (interaction) => {
 
     // 募集ボタンの処理
     if (isClosed) {
-        return interaction.reply({ content: 'この募集はすでに終了しています。', ephemeral: true });
+        return interaction.reply({ content: 'この募集はすでに終了しています。', flags: MessageFlags.Ephemeral });
     }
 
     const username = interaction.user.username;
 
     if (customId === 'join_game') {
         if (participants.includes(username)) {
-            return interaction.reply({ content: 'すでに入っています！', ephemeral: true });
+            return interaction.reply({ content: 'すでに入っています！', flags: MessageFlags.Ephemeral });
         }
         if (participants.length >= currentMaxPlayers) {
-            return interaction.reply({ content: 'もう満員です！', ephemeral: true });
+            return interaction.reply({ content: 'もう満員です！', flags: MessageFlags.Ephemeral });
         }
         participants.push(username);
     }
 
     if (customId === 'cancel_game') {
         if (!participants.includes(username)) {
-            return interaction.reply({ content: 'まだ参加していません。', ephemeral: true });
+            return interaction.reply({ content: 'まだ参加していません。', flags: MessageFlags.Ephemeral });
         }
         participants = participants.filter(user => user !== username);
     }
