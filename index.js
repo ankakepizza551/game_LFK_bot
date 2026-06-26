@@ -233,4 +233,7 @@ function rollDice(notation) {
     return { rolls, total: rolls.reduce((a, b) => a + b, 0), count, sides };
 }
 
-client.login(TOKEN);
+client.login(TOKEN).catch(err => {
+    console.error('[FATAL] Login failed:', err.message);
+    process.exit(1);
+});
