@@ -1,5 +1,8 @@
 require('dotenv').config();
+const http = require('http');
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
+
+http.createServer((_, res) => res.writeHead(200).end('OK')).listen(process.env.PORT || 3000);
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
