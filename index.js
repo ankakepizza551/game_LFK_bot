@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 const TOKEN = process.env.DISCORD_TOKEN;
 
@@ -11,101 +11,70 @@ let currentGameName = 'ゲーム';
 let startTime = '未定';
 let isClosed = false;
 
-// アンケート管理
 let pollCounter = 0;
-const polls = new Map(); // pollId -> { question, options: [{label, voters: Set}], closed }
+const polls = new Map();
 
-client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
-    const args = message.content.trim().split(/[\s 　]+/);
-    const command = args[0];
+client.on('interactionCreate', async (interaction) => {
+    if (interaction.isChatInputCommand()) {
+        const { commandName } = interaction;
 
-    // ダイスロール
-    if (command === '!ダイス' || command === '!dice') {
-        const notation = args[1] || '1d6';
-        const result = rollDice(notation);
-        if (!result) {
-            return message.reply('形式が正しくありません。例: `!ダイス 2d6`（最大10個、最大d100）');
-        }
-        const rollText = result.rolls.length > 1 ? `[${result.rolls.join(', ')}] → **合計: ${result.total}**` : `**${result.total}**`;
-        const embed = new EmbedBuilder()
-            .setTitle(`🎲 ${result.count}d${result.sides} を振った！`)
-            .setDescription(rollText)
-            .setColor(0x5865f2);
-        return message.reply({ embeds: [embed] });
-    }
+        if (commandName === '募集') {
+            participants = [];
+            isClosed = false;
+            currentGameName = interaction.options.getString('ゲーム名');
+            currentMaxPlayers = interaction.options.getInteger('人数') ?? 4;
+            startTime = interaction.options.getString('開始時間') ?? '未定';
+            const mention = interaction.options.getString('メンション') ?? '@here';
 
-    // アンケート
-    if (command === '!アンケート' || command === '!poll') {
-        if (args.length < 4) {
-            return message.reply('使い方: `!アンケート 質問文 選択肢1 選択肢2 [選択肢3] [選択肢4]`');
-        }
-        const question = args[1];
-        const options = args.slice(2, 6); // 最大4択
-        if (options.length < 2) {
-            return message.reply('選択肢を2つ以上指定してください。');
+            const embed = createEmbed();
+            const row = createRecruitButtons();
+            const mentionText = mention === 'none' ? '' : mention;
+
+            await interaction.reply({ content: mentionText || undefined, embeds: [embed], components: [row] });
+            return;
         }
 
-        const pollId = ++pollCounter;
-        const pollData = {
-            question,
-            options: options.map(label => ({ label, voters: new Set() })),
-            closed: false,
-        };
-        polls.set(pollId, pollData);
+        if (commandName === 'アンケート') {
+            const question = interaction.options.getString('質問');
+            const options = ['選択肢1', '選択肢2', '選択肢3', '選択肢4']
+                .map(k => interaction.options.getString(k))
+                .filter(Boolean);
 
-        const embed = createPollEmbed(pollId, pollData);
-        const rows = createPollButtons(pollId, pollData);
-        await message.channel.send({ embeds: [embed], components: rows });
+            const pollId = ++pollCounter;
+            const pollData = {
+                question,
+                options: options.map(label => ({ label, voters: new Set() })),
+                closed: false,
+            };
+            polls.set(pollId, pollData);
+
+            await interaction.reply({ embeds: [createPollEmbed(pollId, pollData)], components: createPollButtons(pollId, pollData) });
+            return;
+        }
+
+        if (commandName === 'ダイス') {
+            const notation = interaction.options.getString('notation') ?? '1d6';
+            const result = rollDice(notation);
+            if (!result) {
+                return interaction.reply({ content: '形式が正しくありません。例: `2d6`（最大10個、最大d100）', flags: MessageFlags.Ephemeral });
+            }
+            const rollText = result.rolls.length > 1
+                ? `[${result.rolls.join(', ')}] → **合計: ${result.total}**`
+                : `**${result.total}**`;
+            const embed = new EmbedBuilder()
+                .setTitle(`🎲 ${result.count}d${result.sides} を振った！`)
+                .setDescription(rollText)
+                .setColor(0x5865f2);
+            return interaction.reply({ embeds: [embed] });
+        }
+
         return;
     }
 
-    if (command === '!募集') {
-        participants = [];
-        isClosed = false;
-        startTime = '未定';
-        let mentionText = '@here'; 
-
-        currentGameName = args[1] || 'ゲーム';
-        
-        if (args[2]) {
-            const match = args[2].match(/\d+/);
-            currentMaxPlayers = match ? parseInt(match[0], 10) : 4;
-        } else {
-            currentMaxPlayers = 4;
-        }
-
-        for (let i = 3; i < args.length; i++) {
-            const arg = args[i];
-            
-            if (arg === 'なし' || arg === 'nomention') {
-                mentionText = '';
-            }
-            else if (arg === '@everyone') {
-                mentionText = '@everyone';
-            }
-            else {
-                startTime = arg;
-            }
-        }
-
-        const embed = createEmbed();
-        const row = createButtons();
-
-        if (mentionText !== '') {
-            await message.channel.send({ content: mentionText, embeds: [embed], components: [row] });
-        } else {
-            await message.channel.send({ embeds: [embed], components: [row] });
-        }
-    }
-});
-
-client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
     const { customId } = interaction;
 
-    // アンケートのボタン処理
     if (customId.startsWith('poll_')) {
         const parts = customId.split('_');
         const pollId = parseInt(parts[2]);
@@ -124,8 +93,6 @@ client.on('interactionCreate', async (interaction) => {
 
         const optionIndex = parseInt(parts[3]);
         const userId = interaction.user.id;
-
-        // すでに同じ選択肢に投票済みなら取り消し、別の選択肢なら切替
         const alreadyVotedOption = pollData.options.findIndex(o => o.voters.has(userId));
         if (alreadyVotedOption === optionIndex) {
             pollData.options[optionIndex].voters.delete(userId);
@@ -138,7 +105,6 @@ client.on('interactionCreate', async (interaction) => {
         return;
     }
 
-    // 募集ボタンの処理
     if (isClosed) {
         return interaction.reply({ content: 'この募集はすでに終了しています。', flags: MessageFlags.Ephemeral });
     }
@@ -159,14 +125,14 @@ client.on('interactionCreate', async (interaction) => {
         if (!participants.includes(username)) {
             return interaction.reply({ content: 'まだ参加していません。', flags: MessageFlags.Ephemeral });
         }
-        participants = participants.filter(user => user !== username);
+        participants = participants.filter(u => u !== username);
     }
 
     if (customId === 'close_game') {
         isClosed = true;
     }
 
-    await interaction.update({ content: '', embeds: [createEmbed()], components: [createButtons()] });
+    await interaction.update({ content: '', embeds: [createEmbed()], components: [createRecruitButtons()] });
 });
 
 function createEmbed() {
@@ -193,31 +159,30 @@ function createEmbed() {
         .addFields(
             { name: '開始時間', value: startTime, inline: true },
             { name: '募集人数', value: `あと ${remaining} 人 (定員: ${currentMaxPlayers}人)`, inline: true },
-            { name: '\u200B', value: '\u200B' }, 
+            { name: '​', value: '​' },
             { name: '現在の参加者', value: participantList }
         )
         .setFooter({ text: footerText });
 }
 
-function createButtons() {
-    return new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId('join_game')
-                .setLabel('参加')
-                .setStyle(ButtonStyle.Success)
-                .setDisabled(isClosed || participants.length >= currentMaxPlayers),
-            new ButtonBuilder()
-                .setCustomId('cancel_game')
-                .setLabel('キャンセル')
-                .setStyle(ButtonStyle.Danger)
-                .setDisabled(isClosed),
-            new ButtonBuilder()
-                .setCustomId('close_game')
-                .setLabel('募集を〆る')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(isClosed)
-        );
+function createRecruitButtons() {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('join_game')
+            .setLabel('参加')
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(isClosed || participants.length >= currentMaxPlayers),
+        new ButtonBuilder()
+            .setCustomId('cancel_game')
+            .setLabel('キャンセル')
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(isClosed),
+        new ButtonBuilder()
+            .setCustomId('close_game')
+            .setLabel('募集を〆る')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(isClosed)
+    );
 }
 
 function createPollEmbed(pollId, pollData) {
@@ -227,7 +192,6 @@ function createPollEmbed(pollId, pollData) {
         const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
         return { name: `${i + 1}. ${o.label}`, value: `${bar} ${o.voters.size}票 (${pct}%)` };
     });
-
     const status = pollData.closed ? '🔒 終了' : `📊 投票中（計 ${total} 票）`;
     return new EmbedBuilder()
         .setTitle(`📋 ${pollData.question}`)
