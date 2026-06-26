@@ -4,7 +4,7 @@ cd /d "%~dp0"
 echo === game_KFG_bot GitHub Push ===
 echo.
 
-git add index.js deploy-commands.js push.bat .env.example
+git add index.js deploy-commands.js push.bat .env.example railway.toml
 
 echo Commit message:
 set /p MSG="> "
