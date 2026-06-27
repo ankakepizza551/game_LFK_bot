@@ -1,6 +1,22 @@
 require('dotenv').config();
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
+
+const PIZZA_FILE = path.join(__dirname, 'pizza.json');
+
+function loadPizzas() {
+    try {
+        return JSON.parse(fs.readFileSync(PIZZA_FILE, 'utf8'));
+    } catch {
+        return [];
+    }
+}
+
+function savePizzas(list) {
+    fs.writeFileSync(PIZZA_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
 
 http.createServer((_, res) => res.writeHead(200).end('OK')).listen(process.env.PORT || 3000);
 
@@ -53,6 +69,30 @@ client.on('interactionCreate', async (interaction) => {
 
             await interaction.reply({ embeds: [createPollEmbed(pollId, pollData)], components: createPollButtons(pollId, pollData) });
             return;
+        }
+
+        if (commandName === 'ピザ') {
+            const pizzas = loadPizzas();
+            if (pizzas.length === 0) {
+                return interaction.reply({ content: 'ピザがまだ登録されていません。`/ピザ登録` で追加してください。', flags: MessageFlags.Ephemeral });
+            }
+            const picked = pizzas[Math.floor(Math.random() * pizzas.length)];
+            const embed = new EmbedBuilder()
+                .setTitle('🍕 今日のピザはこれだ！')
+                .setDescription(`**${picked}**`)
+                .setColor(0xff6600);
+            return interaction.reply({ embeds: [embed] });
+        }
+
+        if (commandName === 'ピザ登録') {
+            const name = interaction.options.getString('名前').trim();
+            const pizzas = loadPizzas();
+            if (pizzas.includes(name)) {
+                return interaction.reply({ content: `「${name}」はすでに登録されています。`, flags: MessageFlags.Ephemeral });
+            }
+            pizzas.push(name);
+            savePizzas(pizzas);
+            return interaction.reply({ content: `🍕 「${name}」を登録しました！（現在 ${pizzas.length} 種類）` });
         }
 
         if (commandName === 'ダイス') {

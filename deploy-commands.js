@@ -25,6 +25,13 @@ const commands = [
         .setName('ダイス')
         .setDescription('ダイスを振ります')
         .addStringOption(o => o.setName('notation').setDescription('例: 2d6（デフォルト: 1d6、最大10個・d100まで）')),
+    new SlashCommandBuilder()
+        .setName('ピザ')
+        .setDescription('登録済みのピザからランダムで1種類を表示します'),
+    new SlashCommandBuilder()
+        .setName('ピザ登録')
+        .setDescription('ピザの種類を登録します')
+        .addStringOption(o => o.setName('名前').setDescription('登録するピザの名前').setRequired(true)),
 ].map(c => c.toJSON());
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN);
