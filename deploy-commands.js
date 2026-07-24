@@ -15,12 +15,18 @@ const commands = [
         )),
     new SlashCommandBuilder()
         .setName('アンケート')
-        .setDescription('アンケートを作成します（2〜4択）')
+        .setDescription('アンケートを作成します（2〜10択）')
         .addStringOption(o => o.setName('質問').setDescription('質問文').setRequired(true))
         .addStringOption(o => o.setName('選択肢1').setDescription('選択肢1').setRequired(true))
         .addStringOption(o => o.setName('選択肢2').setDescription('選択肢2').setRequired(true))
         .addStringOption(o => o.setName('選択肢3').setDescription('選択肢3'))
-        .addStringOption(o => o.setName('選択肢4').setDescription('選択肢4')),
+        .addStringOption(o => o.setName('選択肢4').setDescription('選択肢4'))
+        .addStringOption(o => o.setName('選択肢5').setDescription('選択肢5'))
+        .addStringOption(o => o.setName('選択肢6').setDescription('選択肢6'))
+        .addStringOption(o => o.setName('選択肢7').setDescription('選択肢7'))
+        .addStringOption(o => o.setName('選択肢8').setDescription('選択肢8'))
+        .addStringOption(o => o.setName('選択肢9').setDescription('選択肢9'))
+        .addStringOption(o => o.setName('選択肢10').setDescription('選択肢10')),
     new SlashCommandBuilder()
         .setName('ダイス')
         .setDescription('ダイスを振ります')

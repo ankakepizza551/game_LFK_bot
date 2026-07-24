@@ -55,7 +55,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (commandName === 'アンケート') {
             const question = interaction.options.getString('質問');
-            const options = ['選択肢1', '選択肢2', '選択肢3', '選択肢4']
+            const options = Array.from({ length: 10 }, (_, i) => `選択肢${i + 1}`)
                 .map(k => interaction.options.getString(k))
                 .filter(Boolean);
 
@@ -244,15 +244,17 @@ function createPollEmbed(pollId, pollData) {
 }
 
 function createPollButtons(pollId, pollData) {
-    const voteRow = new ActionRowBuilder().addComponents(
-        pollData.options.map((o, i) =>
-            new ButtonBuilder()
-                .setCustomId(`poll_vote_${pollId}_${i}`)
-                .setLabel(o.label)
-                .setStyle(ButtonStyle.Primary)
-                .setDisabled(pollData.closed)
-        )
+    const voteButtons = pollData.options.map((o, i) =>
+        new ButtonBuilder()
+            .setCustomId(`poll_vote_${pollId}_${i}`)
+            .setLabel(o.label)
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(pollData.closed)
     );
+    const voteRows = [];
+    for (let i = 0; i < voteButtons.length; i += 5) {
+        voteRows.push(new ActionRowBuilder().addComponents(voteButtons.slice(i, i + 5)));
+    }
     const closeRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId(`poll_close_${pollId}`)
@@ -260,7 +262,7 @@ function createPollButtons(pollId, pollData) {
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(pollData.closed)
     );
-    return [voteRow, closeRow];
+    return [...voteRows, closeRow];
 }
 
 function rollDice(notation) {
