@@ -59,11 +59,14 @@ client.on('interactionCreate', async (interaction) => {
                 .map(k => interaction.options.getString(k))
                 .filter(Boolean);
 
+            const multi = interaction.options.getBoolean('複数回答') ?? false;
+
             const pollId = ++pollCounter;
             const pollData = {
                 question,
                 options: options.map(label => ({ label, voters: new Set() })),
                 closed: false,
+                multi,
             };
             polls.set(pollId, pollData);
 
@@ -136,12 +139,21 @@ client.on('interactionCreate', async (interaction) => {
 
         const optionIndex = parseInt(parts[3]);
         const userId = interaction.user.id;
-        const alreadyVotedOption = pollData.options.findIndex(o => o.voters.has(userId));
-        if (alreadyVotedOption === optionIndex) {
-            pollData.options[optionIndex].voters.delete(userId);
+        if (pollData.multi) {
+            const option = pollData.options[optionIndex];
+            if (option.voters.has(userId)) {
+                option.voters.delete(userId);
+            } else {
+                option.voters.add(userId);
+            }
         } else {
-            if (alreadyVotedOption !== -1) pollData.options[alreadyVotedOption].voters.delete(userId);
-            pollData.options[optionIndex].voters.add(userId);
+            const alreadyVotedOption = pollData.options.findIndex(o => o.voters.has(userId));
+            if (alreadyVotedOption === optionIndex) {
+                pollData.options[optionIndex].voters.delete(userId);
+            } else {
+                if (alreadyVotedOption !== -1) pollData.options[alreadyVotedOption].voters.delete(userId);
+                pollData.options[optionIndex].voters.add(userId);
+            }
         }
 
         await interaction.update({ embeds: [createPollEmbed(pollId, pollData)], components: createPollButtons(pollId, pollData) });
@@ -236,11 +248,12 @@ function createPollEmbed(pollId, pollData) {
         return { name: `${i + 1}. ${o.label}`, value: `${bar} ${o.voters.size}票 (${pct}%)` };
     });
     const status = pollData.closed ? '🔒 終了' : `📊 投票中（計 ${total} 票）`;
+    const voteHint = pollData.multi ? 'ボタンを押して投票（複数選択可・再押しで取消）' : 'ボタンを押して投票（再押しで取消・切替可）';
     return new EmbedBuilder()
         .setTitle(`📋 ${pollData.question}`)
         .setColor(pollData.closed ? 0x808080 : 0x5865f2)
         .addFields(fields)
-        .setFooter({ text: `${status} | ボタンを押して投票（再押しで取消・切替可）` });
+        .setFooter({ text: `${status} | ${voteHint}` });
 }
 
 function createPollButtons(pollId, pollData) {

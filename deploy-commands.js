@@ -26,7 +26,8 @@ const commands = [
         .addStringOption(o => o.setName('選択肢7').setDescription('選択肢7'))
         .addStringOption(o => o.setName('選択肢8').setDescription('選択肢8'))
         .addStringOption(o => o.setName('選択肢9').setDescription('選択肢9'))
-        .addStringOption(o => o.setName('選択肢10').setDescription('選択肢10')),
+        .addStringOption(o => o.setName('選択肢10').setDescription('選択肢10'))
+        .addBooleanOption(o => o.setName('複数回答').setDescription('複数選択を許可するか（デフォルト: 不可）')),
     new SlashCommandBuilder()
         .setName('ダイス')
         .setDescription('ダイスを振ります')
